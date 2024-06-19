@@ -441,3 +441,7 @@ gpu.module @module_with_two_target [#nvvm.target, #rocdl.target<chip = "gfx90a">
 
 gpu.module @module_with_offload_handler <#gpu.select_object<0>> [#nvvm.target] {
 }
+
+gpu.module @module_with_target_environment <#gpu.reqd_subgroup_size<32>> {}
+gpu.module @module_with_target_environment <#gpu.reqd_workgroup_size<32>> {}
+gpu.module @module_with_target_environment <#gpu.max_workgroup_size<32>> {}

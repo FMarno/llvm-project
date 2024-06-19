@@ -184,4 +184,46 @@ class GPU_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
   let mnemonic = attrMnemonic;
 }
 
+//===----------------------------------------------------------------------===//
+// GPU target environment attributes.
+//===----------------------------------------------------------------------===//
+
+def GPU_ReqdSubgroupSize : GPU_Attr<"ReqdSubgroupSize", "reqd_subgroup_size"> {
+  let summary = "Specify the only subgroup size this kernel can be compiled for.";
+  let description = [{
+    Constrain the valid subgroup sizes that a kernel can be compiled for to one value.
+    Size is the number of work-items in a subgroup.
+    This can be useful for enabling optimizations or features that only work for a particular
+    subgroup size or with the size known at compile time. This attribute is optional.
+  }];
+
+  let parameters = (ins "unsigned": $size);
+  let assemblyFormat = "`<` $size `>`";
+}
+// TODO should workgroup sizes be multidimensional?
+def GPU_ReqdWorkgroupSize : GPU_Attr<"ReqdWorkgroupSize", "reqd_workgroup_size"> {
+  let summary = "Specify the only workgroup size this kernel can be compiled for.";
+  let description = [{
+    Constrain the valid workgroup sizes that a kernel can be compiled for to one value.
+    Size is the number of work-items in a workgroup.
+    This can be useful for enabling optimizations or features that only work for a particular
+    workgroup size or with the size known at compile time. This attribute is optional.
+  }];
+
+  let parameters = (ins "unsigned": $size);
+  let assemblyFormat = "`<` $size `>`";
+}
+def GPU_MaxWorkgroupSize : GPU_Attr<"MaxWorkgroupSize", "max_workgroup_size"> {
+  let summary = "Specify the greatest workgroup size this kernel can be compiled for to one size.";
+  let description = [{
+    Constrain the valid workgroup sizes that a kernel can be compiled for to less than or equal to a value.
+    Size is the number of work-items in a workgroup.
+    This attribute is optional.
+  }];
+
+  let parameters = (ins "unsigned": $max_size);
+  let assemblyFormat = "`<` $max_size `>`";
+}
+
+
 #endif // GPU_BASE
