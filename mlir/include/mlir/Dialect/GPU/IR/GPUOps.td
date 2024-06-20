@@ -1345,12 +1345,41 @@ def GPU_BarrierOp : GPU_Op<"barrier"> {
   let hasCanonicalizer = 1;
 }
 
+def SpatialExtentsAttr
+  : GPU_Attr< "SpatialExtents", "spatial_extents"> {
+  let summary = "Specify the spatial extent of a gpu module such as subgroup size.";
+  let description = [{
+    Specify the spatial extent of a GPUModuleOp. This can be useful for enabling
+    algorithms, optimizations, or features that rely on a particular kernel
+    parameters being true e.g. vendor specific extentions that only work for one
+    subgroup size. `reqdSubgroupSize` specifies that the module is only valid
+    when subgroup size is that value. `reqdWorkgroupSize` specifies that the
+    module is only valid when workgroup size is that value. `maxWorkgroupSize`
+    specifies that the module is only valid when workgroup size is less than or
+    equal to that value.
+
+    All parameters are optional. Having both `reqdWorkgroupSize` and
+    `maxWorkgroupsize` is invalid.
+  }];
+
+  let parameters = (ins
+  OptionalParameter<"std::optional<unsigned>">: $reqdSubgroupSize,
+  OptionalParameter<"std::optional<DenseI32ArrayAttr>">: $reqdWorkgroupSize,
+  OptionalParameter<"std::optional<DenseI32ArrayAttr>">: $maxWorkgroupSize);
+
+  let assemblyFormat = "`<` struct(params) `>`";
+
+  let genVerifyDecl = 1;
+}
+
+
 def GPU_GPUModuleOp : GPU_Op<"module", [
       DataLayoutOpInterface, HasDefaultDLTIDataLayout, IsolatedFromAbove,
       SymbolTable, Symbol, SingleBlockImplicitTerminator<"ModuleEndOp">
     ]>, Arguments<(ins SymbolNameAttr:$sym_name,
           OptionalAttr<GPUNonEmptyTargetArrayAttr>:$targets,
-          OptionalAttr<OffloadingTranslationAttr>:$offloadingHandler)> {
+          OptionalAttr<OffloadingTranslationAttr>:$offloadingHandler,
+          OptionalAttr<SpatialExtentsAttr>:$spatialExtents)> {
   let summary = "A top level compilation unit containing code to be run on a GPU.";
   let description = [{
     GPU module contains code that is intended to be run on a GPU. A host device
@@ -1390,14 +1419,26 @@ def GPU_GPUModuleOp : GPU_Op<"module", [
       gpu.module_end
     }
     ```
+
+    Modules can have optional spatial extents. Currently you can specify the
+    required subgroup size, required workgroup size, and the max workgroup size.
+    It is invalid to specify both the required workgroup size and the max
+    workgroup size.
+
+    ```
+    gpu.module @symbol_name extents<#gpu.spatial_extents<reqdSubgroupSize=32, maxWorkgroupSize=128>> {}
+    gpu.module @symbol_name extents<#gpu.spatial_extents<reqdWorkgroupSize=[128,128,64]>> {}
+    ```
   }];
   let builders = [
     OpBuilder<(ins "StringRef":$name,
                    CArg<"ArrayAttr", "{}">:$targets,
-                   CArg<"Attribute", "{}">:$handler)>,
+                   CArg<"Attribute", "{}">:$handler,
+                   CArg<"SpatialExtentsAttr", "{}">:$spatialExtents)>,
     OpBuilder<(ins "StringRef":$name,
                    "ArrayRef<Attribute>":$targets,
-                   CArg<"Attribute", "{}">:$handler)>
+                   CArg<"Attribute", "{}">:$handler,
+                   CArg<"SpatialExtentsAttr", "{}">:$spatialExtents)>
   ];
   let regions = (region SizedRegion<1>:$bodyRegion);
   let hasCustomAssemblyFormat = 1;

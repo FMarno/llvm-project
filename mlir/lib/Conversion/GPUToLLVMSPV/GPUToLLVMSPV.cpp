@@ -17,7 +17,6 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
 #include "mlir/Dialect/SPIRV/IR/SPIRVDialect.h"
-#include "mlir/Dialect/SPIRV/IR/TargetAndABI.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
@@ -259,23 +258,32 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
   }
 
   /// Get the subgroup size from the target or return a default.
-  static int getSubgroupSize(Operation *op) {
-    return spirv::lookupTargetEnvOrDefault(op)
-        .getResourceLimits()
-        .getSubgroupSize();
+  static std::optional<int> getSubgroupSize(Operation *op) {
+    auto module = op->getParentOfType<gpu::GPUModuleOp>();
+    if (!module)
+      return std::nullopt;
+    auto spatialExtents = module.getSpatialExtents();
+    if (!spatialExtents)
+      return std::nullopt;
+    return spatialExtents->getReqdSubgroupSize();
   }
 
-  static bool hasValidWidth(gpu::ShuffleOp op) {
+  static bool hasValidWidth(gpu::ShuffleOp op, unsigned subgroupSize) {
     llvm::APInt val;
     Value width = op.getWidth();
-    return matchPattern(width, m_ConstantInt(&val)) &&
-           val == getSubgroupSize(op);
+    return matchPattern(width, m_ConstantInt(&val)) && val == subgroupSize;
   }
 
   LogicalResult
   matchAndRewrite(gpu::ShuffleOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
-    if (!hasValidWidth(op))
+    auto subgroupSize = getSubgroupSize(op);
+    if (!subgroupSize) {
+      return rewriter.notifyMatchFailure(
+          op, "gpu.module spatial_extents attr with reqdSubgroupSize needed for conversion");
+    }
+
+    if (!hasValidWidth(op, subgroupSize.value()))
       return rewriter.notifyMatchFailure(
           op, "shuffle width and subgroup size mismatch");
 

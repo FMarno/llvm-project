@@ -1730,27 +1730,42 @@ LogicalResult gpu::ReturnOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
+// SpatialExtentsAttr
+//===----------------------------------------------------------------------===//
+
+LogicalResult SpatialExtentsAttr::verify(function_ref<InFlightDiagnostic()> emitError, std::optional<unsigned>, std::optional<DenseI32ArrayAttr> reqdWorkgroupSize, std::optional<DenseI32ArrayAttr> maxWorkgroupSize) {
+  if (reqdWorkgroupSize.has_value() && maxWorkgroupSize.has_value())
+    return emitError()
+           << "cannot have both a reqdWorkgroupSize and a maxWorkgroupSize";
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // GPUModuleOp
 //===----------------------------------------------------------------------===//
 
-void GPUModuleOp::build(OpBuilder &builder, OperationState &result,
+// TODO fix definition
+void GPUModuleOp::build(OpBuilder &odsBuilder, OperationState &odsState,
                         StringRef name, ArrayAttr targets,
-                        Attribute offloadingHandler) {
-  ensureTerminator(*result.addRegion(), builder, result.location);
+                        Attribute offloadingHandler,
+                        SpatialExtentsAttr spatialExtents) {
+  ensureTerminator(*odsState.addRegion(), odsBuilder, odsState.location);
 
-  Properties &props = result.getOrAddProperties<Properties>();
+  Properties &props = odsState.getOrAddProperties<Properties>();
   if (targets)
     props.targets = targets;
-  props.setSymName(builder.getStringAttr(name));
+  props.setSymName(odsBuilder.getStringAttr(name));
   props.offloadingHandler = offloadingHandler;
+  props.spatialExtents = spatialExtents;
 }
 
-void GPUModuleOp::build(OpBuilder &builder, OperationState &result,
+void GPUModuleOp::build(OpBuilder &odsBuilder, OperationState &odsState,
                         StringRef name, ArrayRef<Attribute> targets,
-                        Attribute offloadingHandler) {
-  build(builder, result, name,
-        targets.empty() ? ArrayAttr() : builder.getArrayAttr(targets),
-        offloadingHandler);
+                        Attribute offloadingHandler,
+                        SpatialExtentsAttr spatialExtents) {
+  build(odsBuilder, odsState, name,
+        targets.empty() ? ArrayAttr() : odsBuilder.getArrayAttr(targets),
+        offloadingHandler, spatialExtents);
 }
 
 ParseResult GPUModuleOp::parse(OpAsmParser &parser, OperationState &result) {
@@ -1779,6 +1794,16 @@ ParseResult GPUModuleOp::parse(OpAsmParser &parser, OperationState &result) {
       return failure();
     }
     props.targets = targetsAttr;
+  }
+
+  // Parse the optional offloadingHandler
+  if (succeeded(parser.parseOptionalKeyword("extents"))) {
+    if (parser.parseLess())
+      return failure();
+    if (parser.parseAttribute(props.spatialExtents))
+      return failure();
+    if (parser.parseGreater())
+      return failure();
   }
 
   // If module attributes are present, parse them.
@@ -1811,10 +1836,16 @@ void GPUModuleOp::print(OpAsmPrinter &p) {
     p << ' ';
   }
 
+  if (Attribute spatialExtents = getSpatialExtentsAttr()) {
+    p << " extents<";
+    p.printAttribute(spatialExtents);
+    p << ">";
+  }
+
   p.printOptionalAttrDictWithKeyword((*this)->getAttrs(),
                                      {mlir::SymbolTable::getSymbolAttrName(),
                                       getTargetsAttrName(),
-                                      getOffloadingHandlerAttrName()});
+                                      getOffloadingHandlerAttrName(), getSpatialExtentsAttrName()});
   p << ' ';
   p.printRegion(getRegion(), /*printEntryBlockArgs=*/false,
                 /*printBlockTerminators=*/false);
