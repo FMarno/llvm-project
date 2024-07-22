@@ -76,6 +76,10 @@ static LLVM::CallOp createSPIRVBuiltinCall(Location loc,
                                            ValueRange args) {
   auto call = rewriter.create<LLVM::CallOp>(loc, func, args);
   call.setCConv(func.getCConv());
+  call.setConvergentAttr(func.getConvergentAttr());
+  call.setNoUnwindAttr(func.getNoUnwindAttr());
+  call.setWillReturnAttr(func.getWillReturnAttr());
+  call.setMemoryAttr(func.getMemoryAttr());
   return call;
 }
 
