@@ -238,6 +238,7 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
 
   static StringRef getTypeMangling(Type type) {
     return TypeSwitch<Type, StringRef>(type)
+        .Case<BFloat16Type>([](auto) { return "sj"; })
         .Case<Float16Type>([](auto) { return "Dhj"; })
         .Case<Float32Type>([](auto) { return "fj"; })
         .Case<Float64Type>([](auto) { return "dj"; })
@@ -253,6 +254,10 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
             return "lj";
           }
           llvm_unreachable("Invalid integer width");
+        })
+        .Default([](auto) {
+          llvm_unreachable("unhandled type");
+          return "";
         });
   }
 
