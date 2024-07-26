@@ -238,7 +238,6 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
 
   static StringRef getTypeMangling(Type type) {
     return TypeSwitch<Type, StringRef>(type)
-        .Case<BFloat16Type>([](auto) { return "sj"; })
         .Case<Float16Type>([](auto) { return "Dhj"; })
         .Case<Float32Type>([](auto) { return "fj"; })
         .Case<Float64Type>([](auto) { return "dj"; })
@@ -293,17 +292,29 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
 
     Operation *moduleOp = op->getParentWithTrait<OpTrait::SymbolTable>();
     assert(moduleOp && "Expecting module");
-    Type valueType = adaptor.getValue().getType();
+
+    Location loc = op.getLoc();
+    Value val = adaptor.getValue();
+    bool isBf16 = val.getType().isBF16();
+
+    // The type bfloat cannot be represented in SPIR-V, so adding a bitcast
+    // helps the llvm-spirv tool generate correct code.
+    if (isBf16)
+      val = rewriter.create<LLVM::BitcastOp>(loc, rewriter.getI16Type(), val);
+
+    Type shflValueType = val.getType();
     Type offsetType = adaptor.getOffset().getType();
-    Type resultType = valueType;
+    Type resultType = shflValueType;
     LLVM::LLVMFuncOp func = lookupOrCreateSPIRVFn(
-        moduleOp, funcName, {valueType, offsetType}, resultType,
+        moduleOp, funcName, {shflValueType, offsetType}, resultType,
         /*isMemNone=*/false, /*isConvergent=*/true);
 
-    Location loc = op->getLoc();
-    std::array<Value, 2> args{adaptor.getValue(), adaptor.getOffset()};
+    std::array<Value, 2> args{val, adaptor.getOffset()};
     Value result =
         createSPIRVBuiltinCall(loc, rewriter, func, args).getResult();
+    if (isBf16)
+      result =
+          rewriter.create<LLVM::BitcastOp>(loc, rewriter.getBF16Type(), result);
     Value trueVal =
         rewriter.create<LLVM::ConstantOp>(loc, rewriter.getI1Type(), true);
     rewriter.replaceOp(op, {result, trueVal});
