@@ -238,6 +238,7 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
 
   static StringRef getTypeMangling(Type type) {
     return TypeSwitch<Type, StringRef>(type)
+        .Case<BFloat16Type>([](auto) { return "sj"; })
         .Case<Float16Type>([](auto) { return "Dhj"; })
         .Case<Float32Type>([](auto) { return "fj"; })
         .Case<Float64Type>([](auto) { return "dj"; })
@@ -312,11 +313,13 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
     std::array<Value, 2> args{val, adaptor.getOffset()};
     Value result =
         createSPIRVBuiltinCall(loc, rewriter, func, args).getResult();
+    Value trueVal =
+        rewriter.create<LLVM::ConstantOp>(loc, rewriter.getI1Type(), true);
+
     if (isBf16)
       result =
           rewriter.create<LLVM::BitcastOp>(loc, rewriter.getBF16Type(), result);
-    Value trueVal =
-        rewriter.create<LLVM::ConstantOp>(loc, rewriter.getI1Type(), true);
+
     rewriter.replaceOp(op, {result, trueVal});
     return success();
   }
