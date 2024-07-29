@@ -242,13 +242,13 @@ gpu.module @shuffles {
   // CHECK-SAME-DAG:  will_return
   // CHECK-NOT:       memory_effects = #llvm.memory_effects
   // CHECK-SAME:      }
-  // CHECK:           llvm.func spir_funccc @_Z21sub_group_shuffle_xorlj(i64, i32) -> i64 attributes {
+  // CHECK:           llvm.func spir_funccc @_Z21sub_group_shuffle_downlj(i64, i32) -> i64 attributes {
   // CHECK-SAME-DAG:  no_unwind
   // CHECK-SAME-DAG:  convergent
   // CHECK-SAME-DAG:  will_return
   // CHECK-NOT:       memory_effects = #llvm.memory_effects
   // CHECK-SAME:      }
-  // CHECK:           llvm.func spir_funccc @_Z17sub_group_shuffleij(i32, i32) -> i32 attributes {
+  // CHECK:           llvm.func spir_funccc @_Z17sub_group_shuffle_upij(i32, i32) -> i32 attributes {
   // CHECK-SAME-DAG:  no_unwind
   // CHECK-SAME-DAG:  convergent
   // CHECK-SAME-DAG:  will_return
@@ -256,23 +256,59 @@ gpu.module @shuffles {
   // CHECK-SAME:      }
 
   // CHECK-LABEL: gpu_shuffles
-  // CHECK-SAME:              (%[[I32_VAL:.*]]: i32, %[[I64_VAL:.*]]: i64, %[[F32_VAL:.*]]: f32, %[[F64_VAL:.*]]: f64, %[[OFFSET:.*]]: i32)
-  func.func @gpu_shuffles(%i32_val: i32, %i64_val: i64, %f32_val: f32, %f64_val: f64, %offset : i32) {
+  // CHECK-SAME:              (%[[BOOL_VAL]]: i1, %[[I8_VAL:.*]]: i8, %[[I16_VAL:.*]]: i16, %[[I32_VAL:.*]]: i32, %[[I64_VAL:.*]]: i64, %[[BF16_VAL:.*]]: bf16, %[[F16_VAL:.*]]: f16, %[[F32_VAL:.*]]: f32, %[[F64_VAL:.*]]: f64, %[[OFFSET:.*]]: i32)
+  func.func @gpu_shuffles(%bool_val: i1, %i8_val: i8, %i16_val: i16, %i32_val: i32, %i64_val: i64, %bf16_val: bf16, %f16_val: f16, %f32_val: f32, %f64_val: f64, %offset : i32) {
     %width = arith.constant 32 : i32
-    // CHECK:         llvm.call spir_funccc @_Z17sub_group_shuffleij(%[[I32_VAL]], %[[OFFSET]]) {
+    // CHECK:         %[[EXT_BOOL_VAL]] = llvm.zext %[[BOOL_VAL]] : (i1) -> (i8)
+    // CHECK:         %[[BOOL_RES]] = llvm.call spir_funccc @_Z17sub_group_shuffle_upcj(%[[EXT_BOOL_VAL]], %[[OFFSET]]) {
+    // CHECK-SAME-DAG:  no_unwind
+    // CHECK-SAME-DAG:  convergent
+    // CHECK-SAME-DAG:  will_return
+    // CHECK-NOT:       memory_effects = #llvm.memory_effects
+    // CHECK-SAME:    } : (i8, i32) -> i8
+    // CHECK:         llvm.trunc %[[BOOL_RES]]
+    // CHECK:         llvm.mlir.constant(true) : i1
+    %shuffleResult_bool, %valid_bool = gpu.shuffle xor %i8_val, %offset, %width : i8
+    // CHECK:         llvm.call spir_funccc @_Z17sub_group_shuffle_upcj(%[[I8_VAL]], %[[OFFSET]]) {
+    // CHECK-SAME-DAG:  no_unwind
+    // CHECK-SAME-DAG:  convergent
+    // CHECK-SAME-DAG:  will_return
+    // CHECK-NOT:       memory_effects = #llvm.memory_effects
+    // CHECK-SAME:    } : (i8, i32) -> i8
+    // CHECK:         llvm.mlir.constant(true) : i1
+    %shuffleResult_i8, %valid_i8 = gpu.shuffle xor %i8_val, %offset, %width : i8
+    // CHECK:         llvm.call spir_funccc @_Z17sub_group_shuffle_upsj(%[[I16_VAL]], %[[OFFSET]]) {
+    // CHECK-SAME-DAG:  no_unwind
+    // CHECK-SAME-DAG:  convergent
+    // CHECK-SAME-DAG:  will_return
+    // CHECK-NOT:       memory_effects = #llvm.memory_effects
+    // CHECK-SAME:    } : (i16, i32) -> i16
+    // CHECK:         llvm.mlir.constant(true) : i1
+    %shuffleResult_i16, %valid_i16 = gpu.shuffle idx %i16_val, %offset, %width : i16
+    // CHECK:         llvm.call spir_funccc @_Z17sub_group_shuffle_upij(%[[I32_VAL]], %[[OFFSET]]) {
     // CHECK-SAME-DAG:  no_unwind
     // CHECK-SAME-DAG:  convergent
     // CHECK-SAME-DAG:  will_return
     // CHECK-NOT:       memory_effects = #llvm.memory_effects
     // CHECK-SAME:    } : (i32, i32) -> i32
     // CHECK:         llvm.mlir.constant(true) : i1
-    // CHECK:         llvm.call spir_funccc @_Z21sub_group_shuffle_xorlj(%[[I64_VAL]], %[[OFFSET]]) {
+    %shuffleResult_i32, %valid_i32 = gpu.shuffle up %i32_val, %offset, %width : i32
+    // CHECK:         llvm.call spir_funccc @_Z21sub_group_shuffle_downlj(%[[I64_VAL]], %[[OFFSET]]) {
     // CHECK-SAME-DAG:  no_unwind
     // CHECK-SAME-DAG:  convergent
     // CHECK-SAME-DAG:  will_return
     // CHECK-NOT:       memory_effects = #llvm.memory_effects
     // CHECK-SAME:    } : (i64, i32) -> i64
     // CHECK:         llvm.mlir.constant(true) : i1
+    %shuffleResult_i64, %valid_i64 = gpu.shuffle down %i64_val, %offset, %width : i64
+    // CHECK:         llvm.call spir_funccc @_Z17sub_group_shuffle_upij(%[[F16_VAL]], %[[OFFSET]]) {
+    // CHECK-SAME-DAG:  no_unwind
+    // CHECK-SAME-DAG:  convergent
+    // CHECK-SAME-DAG:  will_return
+    // CHECK-NOT:       memory_effects = #llvm.memory_effects
+    // CHECK-SAME:    } : (f16, i32) -> f16
+    // CHECK:         llvm.mlir.constant(true) : i1
+    %shuffleResult_f16, %valid_f16 = gpu.shuffle idx %f16_val, %offset, %width : f16
     // CHECK:         llvm.call spir_funccc @_Z20sub_group_shuffle_upfj(%[[F32_VAL]], %[[OFFSET]]) {
     // CHECK-SAME-DAG:  no_unwind
     // CHECK-SAME-DAG:  convergent
@@ -280,6 +316,7 @@ gpu.module @shuffles {
     // CHECK-NOT:       memory_effects= #llvm.memory_effects
     // CHECK-SAME:    } : (f32, i32) -> f32
     // CHECK:         llvm.mlir.constant(true) : i1
+    %shuffleResult_f32, %valid_f32 = gpu.shuffle up %f32_val, %offset, %width : f32
     // CHECK:         llvm.call spir_funccc @_Z22sub_group_shuffle_downdj(%[[F64_VAL]], %[[OFFSET]]) {
     // CHECK-SAME-DAG:  no_unwind
     // CHECK-SAME-DAG:  convergent
@@ -287,10 +324,11 @@ gpu.module @shuffles {
     // CHECK-NOT:       memory_effects= #llvm.memory_effects
     // CHECK-SAME:    } : (f64, i32) -> f64
     // CHECK:         llvm.mlir.constant(true) : i1
-    %shuffleResult0, %valid0 = gpu.shuffle idx %i32_val, %offset, %width : i32
-    %shuffleResult1, %valid1 = gpu.shuffle xor %i64_val, %offset, %width : i64
-    %shuffleResult2, %valid2 = gpu.shuffle up %f32_val, %offset, %width : f32
-    %shuffleResult3, %valid3 = gpu.shuffle down %f64_val, %offset, %width : f64
+    %shuffleResult_f64, %valid_f64 = gpu.shuffle down %f64_val, %offset, %width : f64
+
+    // COMM: TODO maybe bfloat should be invalid?
+    %shuffleResult4, %valid4 = gpu.shuffle xor %bf16_val, %offset, %width : bf16
+
     return
   }
 }

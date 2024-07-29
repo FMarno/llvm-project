@@ -1249,11 +1249,9 @@ def GPU_ShuffleMode : I32EnumAttr<"ShuffleMode",
 def GPU_ShuffleModeAttr : EnumAttr<GPU_Dialect, GPU_ShuffleMode,
                                    "shuffle_mode">;
 
-def I32I64F32OrF64 : TypeConstraint<Or<[I32.predicate,
-                                        I64.predicate,
-                                        F32.predicate,
-                                        F64.predicate]>,
-                                       "i32, i64, f32 or f64">;
+def I32I64F32OrF64 : TypeConstraint<Or<[FloatOfWidths<[16,32,64]>.predicate,
+                                        SignlessIntOfWidths<[8,16,32,64]>.predicate]>,
+                                       "i16, i32, i64, f16, f32, or f64">;
 
 def GPU_ShuffleOp : GPU_Op<
     "shuffle", [Pure, AllTypesMatch<["value", "shuffleResult"]>]>,
