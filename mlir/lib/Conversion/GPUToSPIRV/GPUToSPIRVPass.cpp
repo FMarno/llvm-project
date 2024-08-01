@@ -52,14 +52,16 @@ private:
   bool mapMemorySpace;
 };
 
-spirv::TargetEnvAttr spirvTargetWithSpatialExtents(spirv::TargetEnvAttr in,
-                                                 gpu::SpatialExtentsAttr spatialExtents) {
+spirv::TargetEnvAttr
+spirvTargetWithSpatialExtents(spirv::TargetEnvAttr in,
+                              gpu::SpatialExtentsAttr spatialExtents) {
   auto oldResources = in.getResourceLimits();
 
   unsigned subgroupSize = oldResources.getSubgroupSize();
   std::optional<unsigned> minSubgroupSize = oldResources.getMinSubgroupSize();
   std::optional<unsigned> maxSubgroupSize = oldResources.getMaxSubgroupSize();
-  DenseI32ArrayAttr maxComputeWorkgroupSize = cast<DenseI32ArrayAttr>(oldResources.getMaxComputeWorkgroupSize());
+  DenseI32ArrayAttr maxComputeWorkgroupSize =
+      cast<DenseI32ArrayAttr>(oldResources.getMaxComputeWorkgroupSize());
 
   assert(spatialExtents);
   if (spatialExtents.getReqdSubgroupSize().has_value()) {
@@ -68,9 +70,8 @@ spirv::TargetEnvAttr spirvTargetWithSpatialExtents(spirv::TargetEnvAttr in,
     maxSubgroupSize = subgroupSize;
   }
   if (spatialExtents.getMaxWorkgroupSize().has_value()) {
-    maxComputeWorkgroupSize = spatialExtents.getMaxWorkgroupSize().value(); 
+    maxComputeWorkgroupSize = spatialExtents.getMaxWorkgroupSize().value();
   }
-
 
   auto newResources = spirv::ResourceLimitsAttr::get(
       oldResources.getContext(), oldResources.getMaxComputeSharedMemorySize(),

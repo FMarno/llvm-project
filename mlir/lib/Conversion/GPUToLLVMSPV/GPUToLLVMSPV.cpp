@@ -280,7 +280,8 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
     auto subgroupSize = getSubgroupSize(op);
     if (!subgroupSize) {
       return rewriter.notifyMatchFailure(
-          op, "gpu.module spatial_extents attr with reqdSubgroupSize needed for conversion");
+          op, "gpu.module spatial_extents attr with reqdSubgroupSize needed "
+              "for conversion");
     }
 
     if (!hasValidWidth(op, subgroupSize.value()))

@@ -1733,7 +1733,11 @@ LogicalResult gpu::ReturnOp::verify() {
 // SpatialExtentsAttr
 //===----------------------------------------------------------------------===//
 
-LogicalResult SpatialExtentsAttr::verify(function_ref<InFlightDiagnostic()> emitError, std::optional<unsigned>, std::optional<DenseI32ArrayAttr> reqdWorkgroupSize, std::optional<DenseI32ArrayAttr> maxWorkgroupSize) {
+LogicalResult
+SpatialExtentsAttr::verify(function_ref<InFlightDiagnostic()> emitError,
+                           std::optional<unsigned>,
+                           std::optional<DenseI32ArrayAttr> reqdWorkgroupSize,
+                           std::optional<DenseI32ArrayAttr> maxWorkgroupSize) {
   if (reqdWorkgroupSize.has_value() && maxWorkgroupSize.has_value())
     return emitError()
            << "cannot have both a reqdWorkgroupSize and a maxWorkgroupSize";
@@ -1744,7 +1748,6 @@ LogicalResult SpatialExtentsAttr::verify(function_ref<InFlightDiagnostic()> emit
 // GPUModuleOp
 //===----------------------------------------------------------------------===//
 
-// TODO fix definition
 void GPUModuleOp::build(OpBuilder &odsBuilder, OperationState &odsState,
                         StringRef name, ArrayAttr targets,
                         Attribute offloadingHandler,
@@ -1842,10 +1845,10 @@ void GPUModuleOp::print(OpAsmPrinter &p) {
     p << ">";
   }
 
-  p.printOptionalAttrDictWithKeyword((*this)->getAttrs(),
-                                     {mlir::SymbolTable::getSymbolAttrName(),
-                                      getTargetsAttrName(),
-                                      getOffloadingHandlerAttrName(), getSpatialExtentsAttrName()});
+  p.printOptionalAttrDictWithKeyword(
+      (*this)->getAttrs(),
+      {mlir::SymbolTable::getSymbolAttrName(), getTargetsAttrName(),
+       getOffloadingHandlerAttrName(), getSpatialExtentsAttrName()});
   p << ' ';
   p.printRegion(getRegion(), /*printEntryBlockArgs=*/false,
                 /*printBlockTerminators=*/false);

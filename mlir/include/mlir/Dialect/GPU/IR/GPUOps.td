@@ -1372,7 +1372,6 @@ def SpatialExtentsAttr
   let genVerifyDecl = 1;
 }
 
-
 def GPU_GPUModuleOp : GPU_Op<"module", [
       DataLayoutOpInterface, HasDefaultDLTIDataLayout, IsolatedFromAbove,
       SymbolTable, Symbol, SingleBlockImplicitTerminator<"ModuleEndOp">
