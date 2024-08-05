@@ -1350,13 +1350,13 @@ def SpatialExtentsAttr
   let summary = "Specify the spatial extent of a gpu module such as subgroup size.";
   let description = [{
     Specify the spatial extent of a GPUModuleOp. This can be useful for enabling
-    algorithms, optimizations, or features that rely on a particular kernel
-    parameters being true e.g. vendor specific extentions that only work for one
-    subgroup size. `reqdSubgroupSize` specifies that the module is only valid
-    when subgroup size is that value. `reqdWorkgroupSize` specifies that the
-    module is only valid when workgroup size is that value. `maxWorkgroupSize`
-    specifies that the module is only valid when workgroup size is less than or
-    equal to that value.
+    algorithms, optimizations, or features that rely on particular kernel
+    parameters being fixed, e.g., vendor-specific extentions that only work for
+    one subgroup size. `reqdSubgroupSize` specifies that the module is only
+    valid when subgroup size is that value. `reqdWorkgroupSize` specifies that
+    the module is only valid when workgroup size is that value.
+    `maxWorkgroupSize` specifies that the module is only valid when workgroup
+    size is less than or equal to that value.
 
     All parameters are optional. Having both `reqdWorkgroupSize` and
     `maxWorkgroupsize` is invalid.

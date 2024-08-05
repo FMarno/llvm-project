@@ -1748,26 +1748,26 @@ SpatialExtentsAttr::verify(function_ref<InFlightDiagnostic()> emitError,
 // GPUModuleOp
 //===----------------------------------------------------------------------===//
 
-void GPUModuleOp::build(OpBuilder &odsBuilder, OperationState &odsState,
+void GPUModuleOp::build(OpBuilder &builder, OperationState &result,
                         StringRef name, ArrayAttr targets,
                         Attribute offloadingHandler,
                         SpatialExtentsAttr spatialExtents) {
-  ensureTerminator(*odsState.addRegion(), odsBuilder, odsState.location);
+  ensureTerminator(*result.addRegion(), builder, result.location);
 
-  Properties &props = odsState.getOrAddProperties<Properties>();
+  Properties &props = result.getOrAddProperties<Properties>();
   if (targets)
     props.targets = targets;
-  props.setSymName(odsBuilder.getStringAttr(name));
+  props.setSymName(builder.getStringAttr(name));
   props.offloadingHandler = offloadingHandler;
   props.spatialExtents = spatialExtents;
 }
 
-void GPUModuleOp::build(OpBuilder &odsBuilder, OperationState &odsState,
+void GPUModuleOp::build(OpBuilder &builder, OperationState &result,
                         StringRef name, ArrayRef<Attribute> targets,
                         Attribute offloadingHandler,
                         SpatialExtentsAttr spatialExtents) {
-  build(odsBuilder, odsState, name,
-        targets.empty() ? ArrayAttr() : odsBuilder.getArrayAttr(targets),
+  build(builder, result, name,
+        targets.empty() ? ArrayAttr() : builder.getArrayAttr(targets),
         offloadingHandler, spatialExtents);
 }
 
@@ -2327,6 +2327,22 @@ TargetOptions::tokenizeCmdOptions() const {
                                    /*MarkEOLs=*/false);
 #endif // _WIN32
   return options;
+}
+
+gpu::SpatialExtentsAttr gpu::lookupSpatialExtents(Operation *op) {
+  while (op) {
+    op = SymbolTable::getNearestSymbolTable(op);
+    if (!op)
+      break;
+
+    if (auto attr = op->getAttrOfType<gpu::SpatialExtentsAttr>(
+            gpu::GPUModuleOp::getSpatialExtentsAttrName()))
+      return attr;
+
+    op = op->getParentOp();
+  }
+
+  return {};
 }
 
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::TargetOptions)

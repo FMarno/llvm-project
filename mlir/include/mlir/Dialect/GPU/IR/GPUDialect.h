@@ -203,6 +203,12 @@ public:
   static constexpr StringLiteral name = "gpu.sparse.spgemmop_handle";
 };
 
+/// Queries the target environment recursively from enclosing symbol table ops
+/// containing the given `op`. Will return a null attribute if no
+/// SpatialExtentsAttr is found
+class SpatialExtentsAttr;
+SpatialExtentsAttr lookupSpatialExtents(Operation *op);
+
 } // namespace gpu
 } // namespace mlir
 
