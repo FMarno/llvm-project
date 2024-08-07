@@ -85,6 +85,24 @@ spirvTargetWithSpatialExtents(spirv::TargetEnvAttr in,
                                    in.getDeviceType(), in.getDeviceID());
 }
 
+bool checkTargetEnvAttrMatches(spirv::TargetEnvAttr targetEnvAttr,
+                               gpu::SpatialExtentsAttr spatialExtentsAttr) {
+  auto targetSubgroupSize = targetEnvAttr.getResourceLimits().getSubgroupSize();
+  auto targetMaxWorkgroupSize =
+      targetEnvAttr.getResourceLimits().getMaxComputeWorkgroupSize();
+  auto spatialSubgroupSize = spatialExtentsAttr.getReqdSubgroupSize();
+  auto spatialMaxWorkgroupSize = spatialExtentsAttr.getMaxWorkgroupSize();
+  bool valid = true;
+  if (spatialSubgroupSize) {
+    valid = valid && spatialSubgroupSize.value() ==
+                         static_cast<unsigned>(targetSubgroupSize);
+  }
+  if (spatialMaxWorkgroupSize) {
+    valid = valid && spatialMaxWorkgroupSize.value() == targetMaxWorkgroupSize;
+  }
+  return valid;
+}
+
 void GPUToSPIRVPass::runOnOperation() {
   MLIRContext *context = &getContext();
   ModuleOp module = getOperation();
@@ -120,25 +138,22 @@ void GPUToSPIRVPass::runOnOperation() {
   // Run conversion for each module independently as they can have different
   // TargetEnv attributes.
   for (Operation *gpuModule : gpuModules) {
-    auto spacialExtents = cast<gpu::GPUModuleOp>(gpuModule).getSpatialExtents();
-    std::optional<unsigned> reqdSubgroupSize;
-    if (spacialExtents) {
-      reqdSubgroupSize = spacialExtents->getReqdSubgroupSize();
-    }
+    gpu::SpatialExtentsAttr spatialExtents =
+        gpu::lookupSpatialExtents(gpuModule);
 
     spirv::TargetEnvAttr targetAttr = spirv::lookupTargetEnv(gpuModule);
     const bool preexistingTargetEnv = targetAttr != nullptr;
-    assert(
-        !(preexistingTargetEnv && reqdSubgroupSize.has_value()) ||
-        static_cast<unsigned>(
-            targetAttr.getResourceLimits().getSubgroupSize()) ==
-                reqdSubgroupSize.value() &&
-            "SRIR-V target environment does not match gpu.reqd_subgroup_size");
-    if (!preexistingTargetEnv) {
+    if (preexistingTargetEnv && spatialExtents) {
+
+      if (!checkTargetEnvAttrMatches(targetAttr, spatialExtents)) {
+        gpuModule->emitError(
+            "spirv.target_env does not match gpu.spatial_extents");
+        return signalPassFailure();
+      }
+    } else if (!preexistingTargetEnv) {
       targetAttr = spirv::getDefaultTargetEnv(&getContext());
-      if (spacialExtents) {
-        targetAttr =
-            spirvTargetWithSpatialExtents(targetAttr, spacialExtents.value());
+      if (spatialExtents) {
+        targetAttr = spirvTargetWithSpatialExtents(targetAttr, spatialExtents);
       }
     }
 
