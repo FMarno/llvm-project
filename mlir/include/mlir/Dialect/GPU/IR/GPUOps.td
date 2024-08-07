@@ -1363,9 +1363,9 @@ def SpatialExtentsAttr
   }];
 
   let parameters = (ins
-  OptionalParameter<"std::optional<unsigned>">: $reqdSubgroupSize,
-  OptionalParameter<"std::optional<DenseI32ArrayAttr>">: $reqdWorkgroupSize,
-  OptionalParameter<"std::optional<DenseI32ArrayAttr>">: $maxWorkgroupSize);
+  OptionalParameter<"IntegerAttr">: $reqdSubgroupSize,
+  OptionalParameter<"DenseI32ArrayAttr">: $reqdWorkgroupSize,
+  OptionalParameter<"DenseI32ArrayAttr">: $maxWorkgroupSize);
 
   let assemblyFormat = "`<` struct(params) `>`";
 

@@ -60,24 +60,24 @@ spirvTargetWithSpatialExtents(spirv::TargetEnvAttr in,
   unsigned subgroupSize = oldResources.getSubgroupSize();
   std::optional<unsigned> minSubgroupSize = oldResources.getMinSubgroupSize();
   std::optional<unsigned> maxSubgroupSize = oldResources.getMaxSubgroupSize();
-  DenseI32ArrayAttr maxComputeWorkgroupSize =
-      cast<DenseI32ArrayAttr>(oldResources.getMaxComputeWorkgroupSize());
+  ArrayAttr maxComputeWorkgroupSize = oldResources.getMaxComputeWorkgroupSize();
 
   assert(spatialExtents);
-  if (spatialExtents.getReqdSubgroupSize().has_value()) {
-    subgroupSize = spatialExtents.getReqdSubgroupSize().value();
+  if (spatialExtents.getReqdSubgroupSize()) {
+    subgroupSize = spatialExtents.getReqdSubgroupSize().getUInt();
     minSubgroupSize = subgroupSize;
     maxSubgroupSize = subgroupSize;
   }
-  if (spatialExtents.getMaxWorkgroupSize().has_value()) {
-    maxComputeWorkgroupSize = spatialExtents.getMaxWorkgroupSize().value();
+  if (spatialExtents.getMaxWorkgroupSize()) {
+    maxComputeWorkgroupSize =
+        cast<ArrayAttr>(spatialExtents.getMaxWorkgroupSize());
   }
 
   auto newResources = spirv::ResourceLimitsAttr::get(
       oldResources.getContext(), oldResources.getMaxComputeSharedMemorySize(),
-      oldResources.getMaxComputeWorkgroupInvocations(),
-      cast<ArrayAttr>(maxComputeWorkgroupSize), subgroupSize, minSubgroupSize,
-      maxSubgroupSize, oldResources.getCooperativeMatrixPropertiesKhr(),
+      oldResources.getMaxComputeWorkgroupInvocations(), maxComputeWorkgroupSize,
+      subgroupSize, minSubgroupSize, maxSubgroupSize,
+      oldResources.getCooperativeMatrixPropertiesKhr(),
       oldResources.getCooperativeMatrixPropertiesNv());
 
   return spirv::TargetEnvAttr::get(in.getTripleAttr(), newResources,
@@ -94,11 +94,10 @@ bool checkTargetEnvAttrMatches(spirv::TargetEnvAttr targetEnvAttr,
   auto spatialMaxWorkgroupSize = spatialExtentsAttr.getMaxWorkgroupSize();
   bool valid = true;
   if (spatialSubgroupSize) {
-    valid = valid && spatialSubgroupSize.value() ==
-                         static_cast<unsigned>(targetSubgroupSize);
+    valid = valid && spatialSubgroupSize.getInt() == targetSubgroupSize;
   }
   if (spatialMaxWorkgroupSize) {
-    valid = valid && spatialMaxWorkgroupSize.value() == targetMaxWorkgroupSize;
+    valid = valid && spatialMaxWorkgroupSize == targetMaxWorkgroupSize;
   }
   return valid;
 }

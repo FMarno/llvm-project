@@ -262,7 +262,10 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
     auto spatialExtents = gpu::lookupSpatialExtents(op);
     if (!spatialExtents)
       return std::nullopt;
-    return spatialExtents.getReqdSubgroupSize();
+    auto subgroupSizeAttr = spatialExtents.getReqdSubgroupSize();
+    if (!subgroupSizeAttr)
+      return std::nullopt;
+    return static_cast<unsigned>(subgroupSizeAttr.getInt());
   }
 
   static bool hasValidWidth(gpu::ShuffleOp op, unsigned subgroupSize) {

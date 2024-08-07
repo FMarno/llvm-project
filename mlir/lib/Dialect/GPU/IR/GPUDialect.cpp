@@ -1733,15 +1733,31 @@ LogicalResult gpu::ReturnOp::verify() {
 // SpatialExtentsAttr
 //===----------------------------------------------------------------------===//
 
-LogicalResult
-SpatialExtentsAttr::verify(function_ref<InFlightDiagnostic()> emitError,
-                           std::optional<unsigned>,
-                           std::optional<DenseI32ArrayAttr> reqdWorkgroupSize,
-                           std::optional<DenseI32ArrayAttr> maxWorkgroupSize) {
-  if (reqdWorkgroupSize.has_value() && maxWorkgroupSize.has_value())
+LogicalResult SpatialExtentsAttr::verify(
+    function_ref<InFlightDiagnostic()> emitError, IntegerAttr reqdSubgroupSize,
+    DenseI32ArrayAttr reqdWorkgroupSize, DenseI32ArrayAttr maxWorkgroupSize) {
+  if (reqdWorkgroupSize && maxWorkgroupSize)
     return emitError()
            << "cannot have both a reqdWorkgroupSize and a maxWorkgroupSize";
   return success();
+}
+
+gpu::SpatialExtentsAttr gpu::lookupSpatialExtents(Operation *op) {
+  OperationName gpuModuleName(gpu::GPUModuleOp::getOperationName(),
+                              op->getContext());
+  while (op) {
+    op = SymbolTable::getNearestSymbolTable(op);
+    if (!op)
+      break;
+
+    if (auto attr = op->getAttrOfType<gpu::SpatialExtentsAttr>(
+            gpu::GPUModuleOp::getSpatialExtentsAttrName(gpuModuleName)))
+      return attr;
+
+    op = op->getParentOp();
+  }
+
+  return {};
 }
 
 //===----------------------------------------------------------------------===//
@@ -2327,24 +2343,6 @@ TargetOptions::tokenizeCmdOptions() const {
                                    /*MarkEOLs=*/false);
 #endif // _WIN32
   return options;
-}
-
-gpu::SpatialExtentsAttr gpu::lookupSpatialExtents(Operation *op) {
-  OperationName gpuModuleName(gpu::GPUModuleOp::getOperationName(),
-                              op->getContext());
-  while (op) {
-    op = SymbolTable::getNearestSymbolTable(op);
-    if (!op)
-      break;
-
-    if (auto attr = op->getAttrOfType<gpu::SpatialExtentsAttr>(
-            gpu::GPUModuleOp::getSpatialExtentsAttrName(gpuModuleName)))
-      return attr;
-
-    op = op->getParentOp();
-  }
-
-  return {};
 }
 
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::TargetOptions)
