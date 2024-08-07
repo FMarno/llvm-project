@@ -2330,12 +2330,12 @@ TargetOptions::tokenizeCmdOptions() const {
 }
 
 gpu::SpatialExtentsAttr gpu::lookupSpatialExtents(Operation *op) {
-    OperationName gpuModuleName(gpu::GPUModuleOp::getOperationName(), op->getContext());
+  OperationName gpuModuleName(gpu::GPUModuleOp::getOperationName(),
+                              op->getContext());
   while (op) {
     op = SymbolTable::getNearestSymbolTable(op);
     if (!op)
       break;
-
 
     if (auto attr = op->getAttrOfType<gpu::SpatialExtentsAttr>(
             gpu::GPUModuleOp::getSpatialExtentsAttrName(gpuModuleName)))
