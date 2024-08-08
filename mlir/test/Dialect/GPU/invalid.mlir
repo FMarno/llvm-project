@@ -832,3 +832,8 @@ module attributes {gpu.container_module} {
   gpu.module @kernel <> {
   }
 }
+
+// -----
+
+// expected-error @below {{cannot have both a reqdWorkgroupSize and a maxWorkgroupSize}}
+gpu.module @kernel extents<#gpu.spatial_extents<reqdWorkgroupSize=[128], maxWorkgroupSize=[128]>>  {}

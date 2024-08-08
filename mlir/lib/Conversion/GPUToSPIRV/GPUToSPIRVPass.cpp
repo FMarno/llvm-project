@@ -143,7 +143,6 @@ void GPUToSPIRVPass::runOnOperation() {
     spirv::TargetEnvAttr targetAttr = spirv::lookupTargetEnv(gpuModule);
     const bool preexistingTargetEnv = targetAttr != nullptr;
     if (preexistingTargetEnv && spatialExtents) {
-
       if (!checkTargetEnvAttrMatches(targetAttr, spatialExtents)) {
         gpuModule->emitError(
             "spirv.target_env does not match gpu.spatial_extents");
