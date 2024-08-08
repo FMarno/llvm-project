@@ -52,6 +52,56 @@ private:
   bool mapMemorySpace;
 };
 
+spirv::TargetEnvAttr
+spirvTargetWithSpatialExtents(spirv::TargetEnvAttr in,
+                              gpu::SpatialExtentsAttr spatialExtents) {
+  auto oldResources = in.getResourceLimits();
+
+  unsigned subgroupSize = oldResources.getSubgroupSize();
+  std::optional<unsigned> minSubgroupSize = oldResources.getMinSubgroupSize();
+  std::optional<unsigned> maxSubgroupSize = oldResources.getMaxSubgroupSize();
+  ArrayAttr maxComputeWorkgroupSize = oldResources.getMaxComputeWorkgroupSize();
+
+  assert(spatialExtents);
+  if (spatialExtents.getReqdSubgroupSize()) {
+    subgroupSize = spatialExtents.getReqdSubgroupSize().getUInt();
+    minSubgroupSize = subgroupSize;
+    maxSubgroupSize = subgroupSize;
+  }
+  if (spatialExtents.getMaxWorkgroupSize()) {
+    maxComputeWorkgroupSize =
+        cast<ArrayAttr>(spatialExtents.getMaxWorkgroupSize());
+  }
+
+  auto newResources = spirv::ResourceLimitsAttr::get(
+      oldResources.getContext(), oldResources.getMaxComputeSharedMemorySize(),
+      oldResources.getMaxComputeWorkgroupInvocations(), maxComputeWorkgroupSize,
+      subgroupSize, minSubgroupSize, maxSubgroupSize,
+      oldResources.getCooperativeMatrixPropertiesKhr(),
+      oldResources.getCooperativeMatrixPropertiesNv());
+
+  return spirv::TargetEnvAttr::get(in.getTripleAttr(), newResources,
+                                   in.getClientAPI(), in.getVendorID(),
+                                   in.getDeviceType(), in.getDeviceID());
+}
+
+bool checkTargetEnvAttrMatches(spirv::TargetEnvAttr targetEnvAttr,
+                               gpu::SpatialExtentsAttr spatialExtentsAttr) {
+  auto targetSubgroupSize = targetEnvAttr.getResourceLimits().getSubgroupSize();
+  auto targetMaxWorkgroupSize =
+      targetEnvAttr.getResourceLimits().getMaxComputeWorkgroupSize();
+  auto spatialSubgroupSize = spatialExtentsAttr.getReqdSubgroupSize();
+  auto spatialMaxWorkgroupSize = spatialExtentsAttr.getMaxWorkgroupSize();
+  bool valid = true;
+  if (spatialSubgroupSize) {
+    valid = valid && spatialSubgroupSize.getInt() == targetSubgroupSize;
+  }
+  if (spatialMaxWorkgroupSize) {
+    valid = valid && spatialMaxWorkgroupSize == targetMaxWorkgroupSize;
+  }
+  return valid;
+}
+
 void GPUToSPIRVPass::runOnOperation() {
   MLIRContext *context = &getContext();
   ModuleOp module = getOperation();
@@ -87,8 +137,23 @@ void GPUToSPIRVPass::runOnOperation() {
   // Run conversion for each module independently as they can have different
   // TargetEnv attributes.
   for (Operation *gpuModule : gpuModules) {
-    spirv::TargetEnvAttr targetAttr =
-        spirv::lookupTargetEnvOrDefault(gpuModule);
+    gpu::SpatialExtentsAttr spatialExtents =
+        gpu::lookupSpatialExtents(gpuModule);
+
+    spirv::TargetEnvAttr targetAttr = spirv::lookupTargetEnv(gpuModule);
+    const bool preexistingTargetEnv = targetAttr != nullptr;
+    if (preexistingTargetEnv && spatialExtents) {
+      if (!checkTargetEnvAttrMatches(targetAttr, spatialExtents)) {
+        gpuModule->emitError(
+            "spirv.target_env does not match gpu.spatial_extents");
+        return signalPassFailure();
+      }
+    } else if (!preexistingTargetEnv) {
+      targetAttr = spirv::getDefaultTargetEnv(&getContext());
+      if (spatialExtents) {
+        targetAttr = spirvTargetWithSpatialExtents(targetAttr, spatialExtents);
+      }
+    }
 
     // Map MemRef memory space to SPIR-V storage class first if requested.
     if (mapMemorySpace) {
