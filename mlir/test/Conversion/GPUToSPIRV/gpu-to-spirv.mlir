@@ -133,8 +133,8 @@ module attributes {gpu.container_module} {
 
 module {
     // expected-error @below {{spirv.target_env does not match gpu.spatial_extents}}
-  gpu.module @kernels extents<#gpu.spatial_extents<reqdSubgroupSize = 32>> attributes {
-  spirv.target_env = #spirv.target_env<#spirv.vce<v1.4, [Kernel, Addresses, GroupNonUniformShuffle, Int64], []>, #spirv.resource_limits<subgroup_size = 16>>
+  gpu.module @kernels attributes {
+  gpu.spatial_extents = #gpu.spatial_extents<reqdSubgroupSize = 32>, spirv.target_env = #spirv.target_env<#spirv.vce<v1.4, [Kernel, Addresses, GroupNonUniformShuffle, Int64], []>, #spirv.resource_limits<subgroup_size = 16>>
 } {
   }
 }
@@ -143,8 +143,8 @@ module {
 
 module {
     // expected-error @below {{spirv.target_env does not match gpu.spatial_extents}}
-  gpu.module @kernels extents<#gpu.spatial_extents<maxWorkgroupSize = [128]>> attributes {
-  spirv.target_env = #spirv.target_env<#spirv.vce<v1.4, [Kernel, Addresses, Int64], []>, #spirv.resource_limits<max_compute_workgroup_size = [128,128]>>
+  gpu.module @kernels attributes {
+  gpu.spatial_extents = #gpu.spatial_extents<maxWorkgroupSize = [128]>, spirv.target_env = #spirv.target_env<#spirv.vce<v1.4, [Kernel, Addresses, Int64], []>, #spirv.resource_limits<max_compute_workgroup_size = [128,128]>>
 } {
   }
 }

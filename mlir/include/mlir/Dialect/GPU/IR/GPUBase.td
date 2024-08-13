@@ -64,7 +64,8 @@ def GPU_Dialect : Dialect {
 
   let discardableAttrs = (ins
     "::mlir::DenseI32ArrayAttr":$known_block_size,
-    "::mlir::DenseI32ArrayAttr":$known_grid_size
+    "::mlir::DenseI32ArrayAttr":$known_grid_size,
+    "::mlir::gpu::SpatialExtentsAttr":$spatial_extents
   );
 
   let dependentDialects = ["arith::ArithDialect"];

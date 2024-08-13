@@ -1745,16 +1745,14 @@ LogicalResult SpatialExtentsAttr::verify(
 gpu::SpatialExtentsAttr gpu::lookupSpatialExtents(Operation *op) {
   OperationName gpuModuleName(gpu::GPUModuleOp::getOperationName(),
                               op->getContext());
-  while (op) {
-    op = SymbolTable::getNearestSymbolTable(op);
-    if (!op)
-      break;
+  auto attrName = GPUDialect::SpatialExtentsAttrHelper::getNameStr();
+  if (op->hasAttr(attrName)){
+    return op->getAttrOfType<gpu::SpatialExtentsAttr>(attrName);
+  }
 
-    if (auto attr = op->getAttrOfType<gpu::SpatialExtentsAttr>(
-            gpu::GPUModuleOp::getSpatialExtentsAttrName(gpuModuleName)))
-      return attr;
-
-    op = op->getParentOp();
+  while ((op = op->getParentOp())) {
+    auto maybeAttr = op->getAttrOfType<gpu::SpatialExtentsAttr>(attrName);
+    if (maybeAttr) return maybeAttr;
   }
 
   return {};
@@ -1815,16 +1813,6 @@ ParseResult GPUModuleOp::parse(OpAsmParser &parser, OperationState &result) {
     props.targets = targetsAttr;
   }
 
-  // Parse the optional offloadingHandler
-  if (succeeded(parser.parseOptionalKeyword("extents"))) {
-    if (parser.parseLess())
-      return failure();
-    if (parser.parseAttribute(props.spatialExtents))
-      return failure();
-    if (parser.parseGreater())
-      return failure();
-  }
-
   // If module attributes are present, parse them.
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return failure();
@@ -1855,16 +1843,10 @@ void GPUModuleOp::print(OpAsmPrinter &p) {
     p << ' ';
   }
 
-  if (Attribute spatialExtents = getSpatialExtentsAttr()) {
-    p << " extents<";
-    p.printAttribute(spatialExtents);
-    p << ">";
-  }
-
   p.printOptionalAttrDictWithKeyword(
       (*this)->getAttrs(),
       {mlir::SymbolTable::getSymbolAttrName(), getTargetsAttrName(),
-       getOffloadingHandlerAttrName(), getSpatialExtentsAttrName()});
+       getOffloadingHandlerAttrName()});
   p << ' ';
   p.printRegion(getRegion(), /*printEntryBlockArgs=*/false,
                 /*printBlockTerminators=*/false);

@@ -214,7 +214,6 @@ SpatialExtentsAttr lookupSpatialExtents(Operation *op);
 
 #include "mlir/Dialect/GPU/IR/GPUOpsEnums.h.inc"
 
-#include "mlir/Dialect/GPU/IR/GPUOpsDialect.h.inc"
 
 #include "mlir/Dialect/GPU/IR/GPUOpInterfaces.h.inc"
 
@@ -223,7 +222,10 @@ SpatialExtentsAttr lookupSpatialExtents(Operation *op);
 #define GET_ATTRDEF_CLASSES
 #include "mlir/Dialect/GPU/IR/GPUOpsAttributes.h.inc"
 
+#include "mlir/Dialect/GPU/IR/GPUOpsDialect.h.inc"
+
 #define GET_OP_CLASSES
 #include "mlir/Dialect/GPU/IR/GPUOps.h.inc"
+
 
 #endif // MLIR_DIALECT_GPU_IR_GPUDIALECT_H

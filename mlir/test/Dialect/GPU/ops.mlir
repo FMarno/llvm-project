@@ -442,6 +442,6 @@ gpu.module @module_with_two_target [#nvvm.target, #rocdl.target<chip = "gfx90a">
 gpu.module @module_with_offload_handler <#gpu.select_object<0>> [#nvvm.target] {
 }
 
-gpu.module @module_with_spatial_extent0 extents<#gpu.spatial_extents<reqdSubgroupSize = 16>> { }
-gpu.module @module_with_spatial_extent1 extents<#gpu.spatial_extents<reqdSubgroupSize = 16, maxWorkgroupSize=[2048, 2048, 128]>> { }
-gpu.module @module_with_spatial_extent2 extents<#gpu.spatial_extents<reqdWorkgroupSize=[128]>> { }
+gpu.module @module_with_spatial_extent0 attributes { gpu.spatial_extents = #gpu.spatial_extents<reqdSubgroupSize = 16>} { }
+gpu.module @module_with_spatial_extent1 attributes { gpu.spatial_extents = #gpu.spatial_extents<reqdSubgroupSize = 16, maxWorkgroupSize=[2048, 2048, 128]>} { }
+gpu.module @module_with_spatial_extent2 attributes { gpu.spatial_extents = #gpu.spatial_extents<reqdWorkgroupSize=[128]>} { }
