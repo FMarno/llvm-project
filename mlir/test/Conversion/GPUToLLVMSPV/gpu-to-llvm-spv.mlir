@@ -257,10 +257,10 @@ gpu.module @shuffles {
 
   // CHECK-LABEL: gpu_shuffles
   // CHECK-SAME:              (%[[VAL_0:.*]]: i32, %[[VAL_1:.*]]: i32, %[[VAL_2:.*]]: i64, %[[VAL_3:.*]]: i32, %[[VAL_4:.*]]: f32, %[[VAL_5:.*]]: i32, %[[VAL_6:.*]]: f64, %[[VAL_7:.*]]: i32)
-  func.func @gpu_shuffles(%val0: i32, %id: i32,
+  llvm.func @gpu_shuffles(%val0: i32, %id: i32,
                           %val1: i64, %mask: i32,
                           %val2: f32, %delta_up: i32,
-                          %val3: f64, %delta_down: i32) attributes {gpu.known_subgroup_size = 32 : i32} {
+                          %val3: f64, %delta_down: i32) attributes { intel_reqd_sub_group_size = 32 : i32 } {
     %width = arith.constant 32 : i32
     // CHECK:         llvm.call spir_funccc @_Z17sub_group_shuffleij(%[[VAL_0]], %[[VAL_1]]) {
     // CHECK-SAME-DAG:  no_unwind
@@ -294,7 +294,7 @@ gpu.module @shuffles {
     %shuffleResult1, %valid1 = gpu.shuffle xor %val1, %mask, %width : i64
     %shuffleResult2, %valid2 = gpu.shuffle up %val2, %delta_up, %width : f32
     %shuffleResult3, %valid3 = gpu.shuffle down %val3, %delta_down, %width : f64
-    return
+    llvm.return
   }
 }
 

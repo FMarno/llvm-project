@@ -271,20 +271,34 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
                          typeMangling.value());
   }
 
-  /// Get the subgroup size from the target or return a default.
-  static std::optional<uint32_t> getSubgroupSize(Operation *op) {
-    // TODO check for intel_reqd_sub_group_size
-
-    FunctionOpInterface func = op->getParentOfType<FunctionOpInterface>();
-    if (!func)
+  static std::optional<uint32_t>
+  getIntelReqdSubGroupSize(Operation* func) {
+    LLVM::LLVMFuncOp llvmFunc = llvm::dyn_cast<LLVM::LLVMFuncOp>(func);
+    if (!llvmFunc)
       return {};
+    return llvmFunc.getIntelReqdSubGroupSize();
+  }
 
+  static std::optional<uint32_t>
+  getKnownSubgroupSize(FunctionOpInterface func) {
     IntegerAttr knownSubgroupSizeAttr =
-        mlir::gpu::GPUDialect::KnownSubgroupSizeAttrHelper(op->getContext())
+        mlir::gpu::GPUDialect::KnownSubgroupSizeAttrHelper(func->getContext())
             .getAttr(func);
     if (!knownSubgroupSizeAttr)
       return {};
+
     return knownSubgroupSizeAttr.getInt();
+  }
+
+  /// Get the subgroup size from the target or return a default.
+  static std::optional<uint32_t> getSubgroupSize(Operation *op) {
+    FunctionOpInterface func = op->getParentOfType<FunctionOpInterface>();
+    if (!func)
+      return {};
+    auto knownSubgroupSize = getKnownSubgroupSize(func);
+    if (knownSubgroupSize)
+      return knownSubgroupSize;
+    return getIntelReqdSubGroupSize(func);
   }
 
   static bool hasValidWidth(gpu::ShuffleOp op, uint32_t subgroupSize) {
