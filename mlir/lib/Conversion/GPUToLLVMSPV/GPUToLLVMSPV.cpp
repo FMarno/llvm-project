@@ -273,24 +273,51 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
                          typeMangling.value());
   }
 
-  /// Get the subgroup size from the target or return a default.
-  static int getSubgroupSize(Operation *op) {
-    return spirv::lookupTargetEnvOrDefault(op)
-        .getResourceLimits()
-        .getSubgroupSize();
+  static std::optional<uint32_t>
+  getIntelReqdSubGroupSize(Operation* func) {
+    LLVM::LLVMFuncOp llvmFunc = llvm::dyn_cast<LLVM::LLVMFuncOp>(func);
+    if (!llvmFunc)
+      return {};
+    return llvmFunc.getIntelReqdSubGroupSize();
   }
 
-  static bool hasValidWidth(gpu::ShuffleOp op) {
+  static std::optional<uint32_t>
+  getKnownSubgroupSize(FunctionOpInterface func) {
+    IntegerAttr knownSubgroupSizeAttr =
+        mlir::gpu::GPUDialect::KnownSubgroupSizeAttrHelper(func->getContext())
+            .getAttr(func);
+    if (!knownSubgroupSizeAttr)
+      return {};
+
+    return knownSubgroupSizeAttr.getInt();
+  }
+
+  /// Get the subgroup size from the target or return a default.
+  static std::optional<uint32_t> getSubgroupSize(Operation *op) {
+    FunctionOpInterface func = op->getParentOfType<FunctionOpInterface>();
+    if (!func)
+      return {};
+    auto knownSubgroupSize = getKnownSubgroupSize(func);
+    if (knownSubgroupSize)
+      return knownSubgroupSize;
+    return getIntelReqdSubGroupSize(func);
+  }
+
+  static bool hasValidWidth(gpu::ShuffleOp op, uint32_t subgroupSize) {
     llvm::APInt val;
     Value width = op.getWidth();
-    return matchPattern(width, m_ConstantInt(&val)) &&
-           val == getSubgroupSize(op);
+    return matchPattern(width, m_ConstantInt(&val)) && val == subgroupSize;
   }
 
   LogicalResult
   matchAndRewrite(gpu::ShuffleOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
-    if (!hasValidWidth(op))
+    auto maybeSubgroupSize = getSubgroupSize(op);
+    if (!maybeSubgroupSize)
+      return rewriter.notifyMatchFailure(
+          op, "subgroup size not specified. Should be specified with "
+              "known_subgroup_size.");
+    if (!hasValidWidth(op, maybeSubgroupSize.value()))
       return rewriter.notifyMatchFailure(
           op, "shuffle width and subgroup size mismatch");
 
